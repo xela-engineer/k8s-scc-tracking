@@ -8,9 +8,9 @@ fssize=$5
 
 # function usage {
 #   echo "Usage:
-#   ${SCRIPTNAME} <namespace> <project_code> <dev|st|uat|pot|sit|lpt|ppm|aat|ppt|prd> [size]
+#   ${SCRIPTNAME} <namespace> <project_code> <dev|st|uat|prd> [size]
 #   - e.g.
-#   # create_fs_hostpath.sh paas-corp-poc-dev2 CLOUD dev 5
+#   # create_fs_hostpath.sh paas CLOUD dev 5
 #   "
 # }
 
