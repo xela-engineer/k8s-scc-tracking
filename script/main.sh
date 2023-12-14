@@ -18,7 +18,12 @@ fssize=$5
 #   usage
 #   exit 1
 # fi
-
+function get_last_item {
+  # $1 is the prefix of the file name
+  # echo "Get the lastest file which is starting with $1"
+  ls -t $DATA_PATH/$1* | head -n 1
+  
+}
 # pj_fs_code=`echo "${pjcode}" | tr '[:upper:]' '[:lower:]' | sed 's/[_-]//g'`
 # pesize=`vgdisplay -c ${VGNAME} | awk -F":" '{print $13}'`
 # totalpe=`vgdisplay -c ${VGNAME} | awk -F":" '{print $14}'`
@@ -26,18 +31,17 @@ fssize=$5
 # freegb=`echo ${pesize} ${freepe} | awk '{ printf "%0.f", $1*$2/1024/1024 }'`
 # totalgb=`echo ${pesize} ${totalpe} | awk '{ printf "%0.f", $1*$2/1024/1024 }'`
 # percentage=$(($freegb * 100 / $totalgb))
-SCC_LIST_FILE_NAME="SCC-list-`date  +'%Y%m%d%H%M%S'`.json"
-SCC_SETTINGS_FILE_NAME="SCC-settings-details-`date  +'%Y%m%d%H%M%S'`.json"
+timestamp=`date  +'%Y%m%d-%H%M%S'`
+SCC_LIST_FILE_NAME="SCC-list-$timestamp.json"
+SCC_LIST_RESULT_FILE_NAME="SCC-list-compare-$timestamp.log"
+SCC_SETTINGS_FILE_NAME="SCC-settings-details-$timestamp.json"
+SCC_SETTINGS_RESULT_FILE_NAME="SCC-settings-details-compare-$timestamp.log"
+# Get the last item of SCC List
+LAST_SCC_LIST_FILE_NAME=$( get_last_item "SCC-list-")
 #Debug
 echo "SCC_LIST_FILE_NAME: $SCC_LIST_FILE_NAME"
 echo "SCC_SETTINGS_FILE_NAME: $SCC_SETTINGS_FILE_NAME"
-# echo "pesize: $pesize"
-# echo "totalpe: $totalpe"
-# echo "freepe: $freepe"
-# echo "freegb: $freegb"
-# echo "totalgb: $totalgb"
-# echo "percentage: $percentage"
-
+echo "LAST_SCC_LIST_FILE_NAME: $LAST_SCC_LIST_FILE_NAME"
 
 touch $DATA_PATH/$SCC_LIST_FILE_NAME
 oc get scc > /dev/null
@@ -45,6 +49,14 @@ echo "$?"
 
 oc get scc -ojson | jq '.items | [.[]  | {name: .metadata.name,users: .users, groups: .groups}] | sort_by(.name) | { SCClist: .}'  \
     > $DATA_PATH/$SCC_LIST_FILE_NAME
+
+touch $DATA_PATH/$SCC_LIST_RESULT_FILE_NAME
+if [ ${#LAST_SCC_LIST_FILE_NAME} -gt 0 ]; then
+  #echo "length of LAST_SCC_LIST_FILE_NAME: ${#LAST_SCC_LIST_FILE_NAME}"
+  echo "$LAST_SCC_LIST_FILE_NAME V.S. $DATA_PATH/$SCC_LIST_FILE_NAME"> $DATA_PATH/$SCC_LIST_RESULT_FILE_NAME
+  diff $LAST_SCC_LIST_FILE_NAME $DATA_PATH/$SCC_LIST_FILE_NAME > $DATA_PATH/$SCC_LIST_RESULT_FILE_NAME
+  
+fi
 
 touch $DATA_PATH/$SCC_SETTINGS_FILE_NAME
 oc get scc -ojson | jq '.items | del(.[].users, .[].groups, .[].metadata.annotations, .[].metadata.creationTimestamp, .[].metadata.generation, .[].metadata.resourceVersion, .[].metadata.uid, .[].kind) | sort_by(.metadata.name)' \
