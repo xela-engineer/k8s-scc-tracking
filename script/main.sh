@@ -44,10 +44,10 @@ LAST_SCC_SETTINGS_FILE_NAME=$( get_last_item "SCC-settings-details-" "json")
 echo "SCC_LIST_FILE_NAME: $SCC_LIST_FILE_NAME"
 echo "SCC_SETTINGS_FILE_NAME: $SCC_SETTINGS_FILE_NAME"
 echo "LAST_SCC_LIST_FILE_NAME: $LAST_SCC_LIST_FILE_NAME"
+echo "LAST_SCC_SETTINGS_FILE_NAME: $LAST_SCC_SETTINGS_FILE_NAME"
 
 touch $DATA_PATH/$SCC_LIST_FILE_NAME
 oc get scc > /dev/null
-echo "$?"
 
 oc get scc -ojson | jq '.items | [.[]  | {name: .metadata.name,users: .users, groups: .groups}] | sort_by(.name) | { SCClist: .}'  \
     > $DATA_PATH/$SCC_LIST_FILE_NAME
@@ -70,6 +70,7 @@ touch $DATA_PATH/$SCC_SETTINGS_FILE_NAME
 oc get scc -ojson | jq '.items | del(.[].users, .[].groups, .[].metadata.annotations, .[].metadata.creationTimestamp, .[].metadata.generation, .[].metadata.resourceVersion, .[].metadata.uid, .[].kind) | sort_by(.metadata.name)' \
     > $DATA_PATH/$SCC_SETTINGS_FILE_NAME
 
+touch $DATA_PATH/$SCC_SETTINGS_RESULT_FILE_NAME
 # Job : diff the list of SCC's permissions details
 if [ ${#LAST_SCC_SETTINGS_FILE_NAME} -gt 0 ]; then
   #echo "length of LAST_SCC_SETTINGS_FILE_NAME: ${#LAST_SCC_SETTINGS_FILE_NAME}"
@@ -84,13 +85,72 @@ if [ ${#LAST_SCC_SETTINGS_FILE_NAME} -gt 0 ]; then
 fi
 
 # TODO: Keep track on a list of workloads that use privileged Security Context Constraints
+ 
+function Get_SA_from_Clusterrolebinding {
+  # $1 is the name of Clusterrolebinding
+  if [ -z "$1" ]
+  then
+    exit 0
+  fi
+  oc get clusterrolebinding -ojson | jq --arg ROLE "$1" \
+    '.items | [.[]? | select((.roleRef.name==$ROLE) and (.roleRef.kind=="ClusterRole") )]? | [ .[]?.subjects[]? | select(.kind=="ServiceAccount") ]? | (map(keys) | add | unique) as $cols | map(. as $row | $cols | map($row[.]?)) as $rows |  $rows[]? | @csv ' \
+    | sed 's/["\/]//g' | sed 's/,/ /g'
+}
+export -f Get_SA_from_Clusterrolebinding
+
+function Get_SA_from_Rolebinding {
+  if [ -z "$1" ]
+  then
+    exit 0
+  fi
+  # $1 is the name of Rolebinding
+  oc get rolebinding --all-namespaces -ojson | jq --arg ROLE "$1" \
+    '.items | [.[]? | select((.roleRef.name==$ROLE) and (.roleRef.kind=="Role") )]? | [ .[].subjects[]? | select(.kind=="ServiceAccount") ]? | (map(keys) | add | unique) as $cols | map(. as $row | $cols | map($row[.]?)) as $rows |  $rows[]? | @csv ' \
+    | sed 's/["\/]//g' | sed 's/,/ /g'
+}
+export -f Get_SA_from_Rolebinding
+
+function Get_SA_Workloads {
+  # $1 is the name of Service  Account
+  # this function helps to get a list of workloads of using a specific SA
+  if [ -z "$1" ]
+  then
+    exit 0
+  fi
+  # Deployment workloads
+  oc get deployment --all-namespaces -ojson | jq --arg SA "$1" \
+    '.items | [.[] | select(.spec.template.spec.serviceAccountName==$SA)] | .[].metadata.name'
+  
+  # deploymentConfig workloads
+  
+  # StatefulSets workloads
+  # DaemonSets workloads
+  # CronJobs workloads
+  oc get CronJobs --all-namespaces -ojson | jq --arg SA "$1" \
+    '.items | [.[] | select(.spec.jobTemplate.spec.template.spec.serviceAccountName==$SA)] | .[].metadata.name'
+}
+export -f Get_SA_Workloads
+
 
 #echo $LIST_of_Privileged_SCC
 for x in $LIST_of_Privileged_SCC ;
 do
-  echo $x
-  # TODO: get a list of service account from list of privileged SCC
+  echo "SCC: $x"
+  # TODO: Get a list of service account from list of privileged SCC
+  clusterrole_list=$(oc get clusterrole --all-namespaces -ojson | jq -r --arg SCC "$x" \
+    '.items | [.[]? |select(.rules[]?.resourceNames[]?==$SCC)]? | .[]?.metadata.name' )
+  echo "clusterrole_list: $clusterrole_list"
+  echo "$clusterrole_list" | xargs -I {} -n 1 bash -c 'Get_SA_from_Clusterrolebinding "$@"' _ {}
   
+
+  role_list=$(oc get role --all-namespaces -ojson | jq -r --arg SCC "$x" \
+    '.items | [.[]? |select(.rules[]?.resourceNames[]?==$SCC)]? | .[]?.metadata.name' )
+  echo "role_list: $role_list"
+  echo "$role_list" | xargs -I {} -n 1 bash -c 'Get_SA_from_Rolebinding "$@"' _ {}
+
+  # TODO: uniq the SA list
+  # TODO: get the workload list
+  #Get_SA_Workloads "vmware-vsphere-csi-driver-controller-sa"
 done
 
 # if [ -z `lvdisplay -c "/dev/${VGNAME}/${pj_fs_code}_cldlog_${HOST#${HOST%??}}1" 2>/dev/null` ]; then
