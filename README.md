@@ -1,4 +1,11 @@
 # k8s-scc-tracking
+This is a project for keep tacking the OpenShift's SCC changes.
+SCC is the permission setting for workloads in K8S world.
+Operator keep tracking the SCC may help on security defences aspect of Kubernetes.
+
+## Core concept if SCC
+
+SCC 
 
 ## Development 
 
