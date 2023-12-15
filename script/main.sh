@@ -1,7 +1,7 @@
 #!/bin/sh
 
 DATA_PATH=$1
-nscode=`echo "$2" | sed 's/-//g'`
+
 pjcode="$3"
 envcode="$4"
 fssize=$5
@@ -20,8 +20,9 @@ fssize=$5
 # fi
 function get_last_item {
   # $1 is the prefix of the file name
+  # $2 is file type
   # echo "Get the lastest file which is starting with $1"
-  ls -t $DATA_PATH/$1* | head -n 1
+  ls -t $DATA_PATH/$1*.$2 | head -n 1
   
 }
 # pj_fs_code=`echo "${pjcode}" | tr '[:upper:]' '[:lower:]' | sed 's/[_-]//g'`
@@ -37,7 +38,8 @@ SCC_LIST_RESULT_FILE_NAME="SCC-list-compare-$timestamp.log"
 SCC_SETTINGS_FILE_NAME="SCC-settings-details-$timestamp.json"
 SCC_SETTINGS_RESULT_FILE_NAME="SCC-settings-details-compare-$timestamp.log"
 # Get the last item of SCC List
-LAST_SCC_LIST_FILE_NAME=$( get_last_item "SCC-list-")
+LAST_SCC_LIST_FILE_NAME=$( get_last_item "SCC-list-" "json")
+LAST_SCC_SETTINGS_FILE_NAME=$( get_last_item "SCC-settings-details-" "json")
 #Debug
 echo "SCC_LIST_FILE_NAME: $SCC_LIST_FILE_NAME"
 echo "SCC_SETTINGS_FILE_NAME: $SCC_SETTINGS_FILE_NAME"
@@ -51,16 +53,45 @@ oc get scc -ojson | jq '.items | [.[]  | {name: .metadata.name,users: .users, gr
     > $DATA_PATH/$SCC_LIST_FILE_NAME
 
 touch $DATA_PATH/$SCC_LIST_RESULT_FILE_NAME
+
+# Job : diff the list of SCC
 if [ ${#LAST_SCC_LIST_FILE_NAME} -gt 0 ]; then
   #echo "length of LAST_SCC_LIST_FILE_NAME: ${#LAST_SCC_LIST_FILE_NAME}"
   echo "$LAST_SCC_LIST_FILE_NAME V.S. $DATA_PATH/$SCC_LIST_FILE_NAME"> $DATA_PATH/$SCC_LIST_RESULT_FILE_NAME
-  diff $LAST_SCC_LIST_FILE_NAME $DATA_PATH/$SCC_LIST_FILE_NAME > $DATA_PATH/$SCC_LIST_RESULT_FILE_NAME
-  
+  diff $LAST_SCC_LIST_FILE_NAME $DATA_PATH/$SCC_LIST_FILE_NAME >> $DATA_PATH/$SCC_LIST_RESULT_FILE_NAME
+  DIFF_RESULT=$?
+  if [ "$DIFF_RESULT" -ne "0" ]; then
+    echo "There are some different on SCC list DIFF_RESULT: $DIFF_RESULT"
+
+  fi
 fi
 
 touch $DATA_PATH/$SCC_SETTINGS_FILE_NAME
 oc get scc -ojson | jq '.items | del(.[].users, .[].groups, .[].metadata.annotations, .[].metadata.creationTimestamp, .[].metadata.generation, .[].metadata.resourceVersion, .[].metadata.uid, .[].kind) | sort_by(.metadata.name)' \
     > $DATA_PATH/$SCC_SETTINGS_FILE_NAME
+
+# Job : diff the list of SCC's permissions details
+if [ ${#LAST_SCC_SETTINGS_FILE_NAME} -gt 0 ]; then
+  #echo "length of LAST_SCC_SETTINGS_FILE_NAME: ${#LAST_SCC_SETTINGS_FILE_NAME}"
+  echo "$LAST_SCC_SETTINGS_FILE_NAME V.S. $DATA_PATH/$SCC_SETTINGS_FILE_NAME"> $DATA_PATH/$SCC_SETTINGS_RESULT_FILE_NAME
+  diff $LAST_SCC_SETTINGS_FILE_NAME $DATA_PATH/$SCC_SETTINGS_FILE_NAME > /dev/null
+  DIFF_RESULT=$?
+  diff $LAST_SCC_SETTINGS_FILE_NAME $DATA_PATH/$SCC_SETTINGS_FILE_NAME >> $DATA_PATH/$SCC_SETTINGS_RESULT_FILE_NAME
+  if [ "$DIFF_RESULT" -ne "0" ]; then
+    echo "There are some different on SCC settings DIFF_RESULT: $DIFF_RESULT"
+
+  fi
+fi
+
+# TODO: Keep track on a list of workloads that use privileged Security Context Constraints
+
+#echo $LIST_of_Privileged_SCC
+for x in $LIST_of_Privileged_SCC ;
+do
+  echo $x
+  # TODO: get a list of service account from list of privileged SCC
+  
+done
 
 # if [ -z `lvdisplay -c "/dev/${VGNAME}/${pj_fs_code}_cldlog_${HOST#${HOST%??}}1" 2>/dev/null` ]; then
 #   # Case: Create
