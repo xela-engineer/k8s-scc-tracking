@@ -139,16 +139,20 @@ do
   # TODO: Get a list of service account from list of privileged SCC
   clusterrole_list=$(oc get clusterrole --all-namespaces -ojson | jq -r --arg SCC "$x" \
     '.items | [.[]? |select(.rules[]?.resourceNames[]?==$SCC)]? | .[]?.metadata.name' )
-  echo "clusterrole_list: $clusterrole_list"
-  echo "$clusterrole_list" | xargs -I {} -n 1 bash -c 'Get_SA_from_Clusterrolebinding "$@"' _ {}
-  
+  #echo "clusterrole_list: $clusterrole_list"
+  list_of_SA=$(echo "$clusterrole_list" | \
+      xargs -I {} -n 1 bash -c 'Get_SA_from_Clusterrolebinding "$@"' _ {} )
+  #echo "$list_of_SA"
 
   role_list=$(oc get role --all-namespaces -ojson | jq -r --arg SCC "$x" \
     '.items | [.[]? |select(.rules[]?.resourceNames[]?==$SCC)]? | .[]?.metadata.name' )
-  echo "role_list: $role_list"
-  echo "$role_list" | xargs -I {} -n 1 bash -c 'Get_SA_from_Rolebinding "$@"' _ {}
-
-  # TODO: uniq the SA list
+  #echo "role_list: $role_list"
+  list_of_SA+="
+"
+  list_of_SA+=$(echo "$role_list" | \
+      xargs -I {} -n 1 bash -c 'Get_SA_from_Rolebinding "$@"' _ {})
+  echo "$list_of_SA" | sort | uniq | sed '/^$/d' | sed 's/^ServiceAccount //g'
+  
   # TODO: get the workload list
   #Get_SA_Workloads "vmware-vsphere-csi-driver-controller-sa"
 done
