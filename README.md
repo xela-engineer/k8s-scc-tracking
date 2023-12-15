@@ -14,6 +14,9 @@ We can just think SCC as Selinux.
 
 1. SCC config YAML direct attach to users, ServiceAccount, groups
     1. SCC -> SA
+    2. SCC -> User
+    3. SCC -> Group
+
 2. SCC attach to roles, then ServiceAccount bind to clusterRole/Role by clusterEoleBinding/roleBinding
     1. SCC -> Role -> ClusterRoleBinding/RoleBinding -> SA
 
