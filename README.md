@@ -5,7 +5,15 @@ Operator keep tracking the SCC may help on security defences aspect of Kubernete
 
 ## Core concept if SCC
 
-SCC 
+### What is SCC?
+
+### How SCC attach to workloads?
+
+1. SCC config YAML direct attach to users, ServiceAccount, groups
+    1. SCC -> SA
+2. SCC attach to roles, then ServiceAccount bind to clusterRole/Role by clusterEoleBinding/roleBinding
+    2. SCC -> Role -> ClusterRoleBinding/RoleBinding -> SA
+
 
 ## Development 
 
