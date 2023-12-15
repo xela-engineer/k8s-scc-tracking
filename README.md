@@ -10,9 +10,9 @@ Admin keep tracking the SCC may helps on security defences aspect of Kubernetes.
 ### How SCC attach to workloads?
 
 1. SCC config YAML direct attach to users, ServiceAccount, groups
-    1. SCC -> SA
+  1. SCC -> SA
 2. SCC attach to roles, then ServiceAccount bind to clusterRole/Role by clusterEoleBinding/roleBinding
-    2. SCC -> Role -> ClusterRoleBinding/RoleBinding -> SA
+  2. SCC -> Role -> ClusterRoleBinding/RoleBinding -> SA
 
 
 ## Development 
