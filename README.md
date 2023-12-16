@@ -41,4 +41,17 @@ oc get clusterrole --all-namespaces -ojson | jq '.items | [.[] |select(.rules[]?
 #E.G.
 oc get clusterrolebinding -ojson | jq '.items | [.[]? | select((.roleRef.name=="vmware-vsphere-privileged-role") and (.roleRef.kind=="ClusterRole") )] | [ .[].subjects[]? | select(.kind=="ServiceAccount") ] | (map(keys) | add | unique) as $cols | map(. as $row | $cols | map($row[.])) as $rows |  $rows[] | @csv ' | sed 's/["\/]//g' | sed 's/,/ /g'
 
+SCC: privileged
+file-integrity-daemon openshift-file-integrity
+file-integrity-operator openshift-file-integrity
+grafana-user monitoring
+grafana-user netobserv
+machine-config-daemon openshift-machine-config-operator
+minio-netobserv-sa minio-netobserv
+node-ca openshift-image-registry
+ovn-kubernetes-controller openshift-ovn-kubernetes
+tuned openshift-cluster-node-tuning-operator
+vmware-vsphere-csi-driver-controller-sa openshift-cluster-csi-drivers
+vmware-vsphere-csi-driver-node-sa openshift-cluster-csi-drivers
+vmware-vsphere-csi-driver-operator openshift-cluster-csi-drivers
 ```

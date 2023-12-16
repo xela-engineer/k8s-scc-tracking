@@ -23,12 +23,33 @@ function get_last_item {
   # $2 is file type
   # echo "Get the lastest file which is starting with $1"
   ls -t $DATA_PATH/$1*.$2 | head -n 1
-  
 }
+
+function turn_json_to_table {
+  # $1 is the input variable JSON
+  # The output of this function will return example like this:
+  # Input : [ {"name": "pod1", "namespace": "ns1"}, {"name": "pod2", "namespace": "ns2"}]
+  # Output : 
+  # name namespace
+  # pod1 ns1
+  # pod2 ns2
+  if [ -z "$1" ]
+  then
+    exit 0
+  fi
+  #echo "function input : $1"
+  if [ "$(jq length <<< $1)" -eq 0 ] ; then
+    exit 0
+  fi
+
+  echo "$1" | jq -r \
+  '(map(keys) | add | unique) as $cols | map(. as $row | $cols | map($row[.]?)) as $rows |  $rows[]? | @csv'\
+  | sed 's/["\/]//g'
+}
+export -f turn_json_to_table
+
 # pj_fs_code=`echo "${pjcode}" | tr '[:upper:]' '[:lower:]' | sed 's/[_-]//g'`
 # pesize=`vgdisplay -c ${VGNAME} | awk -F":" '{print $13}'`
-# totalpe=`vgdisplay -c ${VGNAME} | awk -F":" '{print $14}'`
-# freepe=`vgdisplay -c ${VGNAME} | awk -F":" '{print $16}'`
 # freegb=`echo ${pesize} ${freepe} | awk '{ printf "%0.f", $1*$2/1024/1024 }'`
 # totalgb=`echo ${pesize} ${totalpe} | awk '{ printf "%0.f", $1*$2/1024/1024 }'`
 # percentage=$(($freegb * 100 / $totalgb))
@@ -117,17 +138,27 @@ function Get_SA_Workloads {
   then
     exit 0
   fi
+  # Variable Service Account
+  SA=$(echo "$1" | awk -F" " '{print $1}')
+  # Variable Namespace
+  NS=$(echo "$1" | awk -F" " '{print $2}')
+  echo "SA: $SA, NS: $NS"
   # Deployment workloads
-  oc get deployment --all-namespaces -ojson | jq --arg SA "$1" \
-    '.items | [.[] | select(.spec.template.spec.serviceAccountName==$SA)] | .[].metadata.name'
-  
+  # echo "Deployment workloads"
+  deployment_json=$(oc get deployment -n $NS -ojson | jq -c --arg SA "$SA" \
+  '.items | [.[]? | select(.spec.template.spec.serviceAccountName==$SA)]? | [{ name: .[]?.metadata.name}]')
+  deployment_table=$(turn_json_to_table $deployment_json)
+  echo "$deployment_table" | sed '/^$/d' |  awk '{print "Deployment: " $1}' | sort
+   # | xargs -I {} -n 1 bash -c 'turn_json_to_table "$@"' _ {} | sed 's/["\/]//g'
   # deploymentConfig workloads
   
   # StatefulSets workloads
   # DaemonSets workloads
   # CronJobs workloads
-  oc get CronJobs --all-namespaces -ojson | jq --arg SA "$1" \
-    '.items | [.[] | select(.spec.jobTemplate.spec.template.spec.serviceAccountName==$SA)] | .[].metadata.name'
+  # echo "CronJobs workloads"
+#   oc get CronJobs -n $NS -ojson | jq --arg SA "$1" \
+#     '.items | [.[]? | select(.spec.jobTemplate.spec.template.spec.serviceAccountName==$SA)]? | [ { name: .[]?.metadata.name, namespace: .[]?.metadata.namespace}]? | (map(keys) | add | unique) as $cols | map(. as $row | $cols | map($row[.]?)) as $rows |  $rows[]? | @csv '\
+#     | sed 's/["\/]//g'
 }
 export -f Get_SA_Workloads
 
@@ -151,10 +182,12 @@ do
 "
   list_of_SA+=$(echo "$role_list" | \
       xargs -I {} -n 1 bash -c 'Get_SA_from_Rolebinding "$@"' _ {})
-  echo "$list_of_SA" | sort | uniq | sed '/^$/d' | sed 's/^ServiceAccount //g'
+  Final_SA_List=$(echo "$list_of_SA" | sort | uniq | sed '/^$/d' | sed 's/^ServiceAccount //g')
+  #echo "$Final_SA_List"
   
   # TODO: get the workload list
-  #Get_SA_Workloads "vmware-vsphere-csi-driver-controller-sa"
+  echo "$Final_SA_List" | xargs -I {} -n 1 bash -c 'Get_SA_Workloads "$@"' _ {}
+  echo ""
 done
 
 # if [ -z `lvdisplay -c "/dev/${VGNAME}/${pj_fs_code}_cldlog_${HOST#${HOST%??}}1" 2>/dev/null` ]; then
