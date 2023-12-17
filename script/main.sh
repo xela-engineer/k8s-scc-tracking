@@ -144,21 +144,22 @@ function Get_SA_Workloads {
   NS=$(echo "$1" | awk -F" " '{print $2}')
   echo "SA: $SA, NS: $NS"
   # Deployment workloads
-  # echo "Deployment workloads"
   deployment_json=$(oc get deployment -n $NS -ojson | jq -c --arg SA "$SA" \
   '.items | [.[]? | select(.spec.template.spec.serviceAccountName==$SA)]? | [{ name: .[]?.metadata.name}]')
   deployment_table=$(turn_json_to_table $deployment_json)
   echo "$deployment_table" | sed '/^$/d' |  awk '{print "Deployment: " $1}' | sort
-   # | xargs -I {} -n 1 bash -c 'turn_json_to_table "$@"' _ {} | sed 's/["\/]//g'
-  # deploymentConfig workloads
+
+  # TODO: deploymentConfig workloads
   
-  # StatefulSets workloads
-  # DaemonSets workloads
+  # TODO: StatefulSets workloads
+
+  # TODO: DaemonSets workloads
+
   # CronJobs workloads
-  # echo "CronJobs workloads"
-#   oc get CronJobs -n $NS -ojson | jq --arg SA "$1" \
-#     '.items | [.[]? | select(.spec.jobTemplate.spec.template.spec.serviceAccountName==$SA)]? | [ { name: .[]?.metadata.name, namespace: .[]?.metadata.namespace}]? | (map(keys) | add | unique) as $cols | map(. as $row | $cols | map($row[.]?)) as $rows |  $rows[]? | @csv '\
-#     | sed 's/["\/]//g'
+  cronjobs_json=$(oc get CronJobs -n $NS -ojson | jq --arg SA "$SA" \
+  '.items | [.[]? | select(.spec.jobTemplate.spec.template.spec.serviceAccountName==$SA)]? | [ { name: .[]?.metadata.name}]')
+  cronjobs_table=$(turn_json_to_table $cronjobs_json)
+  echo "$cronjobs_table" | sed '/^$/d' |  awk '{print "CronJob: " $1}' | sort
 }
 export -f Get_SA_Workloads
 
