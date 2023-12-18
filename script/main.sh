@@ -155,7 +155,11 @@ function Get_SA_Workloads {
   deploymentConfig_table=$(turn_json_to_table $deploymentConfig_json)
   echo "$deploymentConfig_table" | sed '/^$/d' |  awk '{print "DeploymentConfig: " $1}' | sort
 
-  # TODO: StatefulSets workloads
+  # StatefulSets workloads
+  statefulSets_json=$(oc get statefulSets -n $NS -ojson | jq -c --arg SA "$SA" \
+  '.items | [.[]? | select(.spec.template.spec.serviceAccountName==$SA)]? | [{ name: .[]?.metadata.name}]')
+  statefulSets_table=$(turn_json_to_table $statefulSets_json)
+  echo "$statefulSets_table" | sed '/^$/d' |  awk '{print "StatefulSet: " $1}' | sort
 
   # TODO: DaemonSets workloads
 
