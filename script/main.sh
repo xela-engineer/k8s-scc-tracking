@@ -2,22 +2,19 @@
 
 DATA_PATH=$1
 
-pjcode="$3"
-envcode="$4"
-fssize=$5
+function usage {
+  echo "Usage:
+  ${SCRIPTNAME} <log and result path>
+  - e.g.
+  # source ./.env && ./main.sh "/root/scc-monitoring/backup-repo/scc-monitoring/"
+  "
+}
 
-# function usage {
-#   echo "Usage:
-#   ${SCRIPTNAME} <namespace> <project_code> <dev|st|uat|prd> [size]
-#   - e.g.
-#   # create_fs_hostpath.sh paas CLOUD dev 5
-#   "
-# }
+if [ $# -ne 1 ]; then
+  usage
+  exit 1
+fi
 
-# if [ $# -ne 5 ]; then
-#   usage
-#   exit 1
-# fi
 function get_last_item {
   # $1 is the prefix of the file name
   # $2 is file type
@@ -48,25 +45,26 @@ function turn_json_to_table {
 }
 export -f turn_json_to_table
 
-# pj_fs_code=`echo "${pjcode}" | tr '[:upper:]' '[:lower:]' | sed 's/[_-]//g'`
-# pesize=`vgdisplay -c ${VGNAME} | awk -F":" '{print $13}'`
-# freegb=`echo ${pesize} ${freepe} | awk '{ printf "%0.f", $1*$2/1024/1024 }'`
-# totalgb=`echo ${pesize} ${totalpe} | awk '{ printf "%0.f", $1*$2/1024/1024 }'`
-# percentage=$(($freegb * 100 / $totalgb))
 timestamp=`date  +'%Y%m%d-%H%M%S'`
 SCC_LIST_FILE_NAME="SCC-list-$timestamp.json"
 SCC_LIST_RESULT_FILE_NAME="SCC-list-compare-$timestamp.log"
 SCC_SETTINGS_FILE_NAME="SCC-settings-details-$timestamp.json"
 SCC_SETTINGS_RESULT_FILE_NAME="SCC-settings-details-compare-$timestamp.log"
+SCC_WORKLOADS_FILE_NAME="SCC-Workloads-$timestamp.json"
+SCC_WORKLOADS_RESULT_FILE_NAME="SCC-Workloads-compare-$timestamp.log"
 # Get the last item of SCC List
 LAST_SCC_LIST_FILE_NAME=$( get_last_item "SCC-list-" "json")
 LAST_SCC_SETTINGS_FILE_NAME=$( get_last_item "SCC-settings-details-" "json")
+LAST_SCC_WORKLOADS_FILE_NAME=$( get_last_item "SCC-Workloads-" "json")
 #Debug
-echo "SCC_LIST_FILE_NAME: $SCC_LIST_FILE_NAME"
-echo "SCC_SETTINGS_FILE_NAME: $SCC_SETTINGS_FILE_NAME"
-echo "LAST_SCC_LIST_FILE_NAME: $LAST_SCC_LIST_FILE_NAME"
-echo "LAST_SCC_SETTINGS_FILE_NAME: $LAST_SCC_SETTINGS_FILE_NAME"
+# echo "SCC_LIST_FILE_NAME: $SCC_LIST_FILE_NAME"
+# echo "SCC_SETTINGS_FILE_NAME: $SCC_SETTINGS_FILE_NAME"
+# echo "SCC_WORKLOADS_FILE_NAME: $SCC_WORKLOADS_FILE_NAME"
+# echo "LAST_SCC_LIST_FILE_NAME: $LAST_SCC_LIST_FILE_NAME"
+# echo "LAST_SCC_SETTINGS_FILE_NAME: $LAST_SCC_SETTINGS_FILE_NAME"
+# echo "LAST_SCC_WORKLOADS_FILE_NAME: $LAST_SCC_WORKLOADS_FILE_NAME"
 
+echo "[Start]"
 touch $DATA_PATH/$SCC_LIST_FILE_NAME
 oc get scc > /dev/null
 
@@ -79,10 +77,10 @@ touch $DATA_PATH/$SCC_LIST_RESULT_FILE_NAME
 if [ ${#LAST_SCC_LIST_FILE_NAME} -gt 0 ]; then
   #echo "length of LAST_SCC_LIST_FILE_NAME: ${#LAST_SCC_LIST_FILE_NAME}"
   echo "$LAST_SCC_LIST_FILE_NAME V.S. $DATA_PATH/$SCC_LIST_FILE_NAME"> $DATA_PATH/$SCC_LIST_RESULT_FILE_NAME
-  diff $LAST_SCC_LIST_FILE_NAME $DATA_PATH/$SCC_LIST_FILE_NAME >> $DATA_PATH/$SCC_LIST_RESULT_FILE_NAME
+  diff --context=10 $LAST_SCC_LIST_FILE_NAME $DATA_PATH/$SCC_LIST_FILE_NAME >> $DATA_PATH/$SCC_LIST_RESULT_FILE_NAME
   DIFF_RESULT=$?
   if [ "$DIFF_RESULT" -ne "0" ]; then
-    echo "There are some different on SCC list DIFF_RESULT: $DIFF_RESULT"
+    echo "There are some different on SCC list. Please check $DATA_PATH/$SCC_LIST_RESULT_FILE_NAME"
 
   fi
 fi
@@ -96,16 +94,16 @@ touch $DATA_PATH/$SCC_SETTINGS_RESULT_FILE_NAME
 if [ ${#LAST_SCC_SETTINGS_FILE_NAME} -gt 0 ]; then
   #echo "length of LAST_SCC_SETTINGS_FILE_NAME: ${#LAST_SCC_SETTINGS_FILE_NAME}"
   echo "$LAST_SCC_SETTINGS_FILE_NAME V.S. $DATA_PATH/$SCC_SETTINGS_FILE_NAME"> $DATA_PATH/$SCC_SETTINGS_RESULT_FILE_NAME
-  diff $LAST_SCC_SETTINGS_FILE_NAME $DATA_PATH/$SCC_SETTINGS_FILE_NAME > /dev/null
+  diff --context=10 $LAST_SCC_SETTINGS_FILE_NAME $DATA_PATH/$SCC_SETTINGS_FILE_NAME > /dev/null
   DIFF_RESULT=$?
-  diff $LAST_SCC_SETTINGS_FILE_NAME $DATA_PATH/$SCC_SETTINGS_FILE_NAME >> $DATA_PATH/$SCC_SETTINGS_RESULT_FILE_NAME
+  diff --context=10 $LAST_SCC_SETTINGS_FILE_NAME $DATA_PATH/$SCC_SETTINGS_FILE_NAME >> $DATA_PATH/$SCC_SETTINGS_RESULT_FILE_NAME
   if [ "$DIFF_RESULT" -ne "0" ]; then
-    echo "There are some different on SCC settings DIFF_RESULT: $DIFF_RESULT"
+    echo "There are some different on SCC settings. Please check $DATA_PATH/$SCC_SETTINGS_RESULT_FILE_NAME"
 
   fi
 fi
 
-# TODO: Keep track on a list of workloads that use privileged Security Context Constraints
+# Keep track on a list of workloads that use privileged Security Context Constraints
  
 function Get_SA_from_Clusterrolebinding {
   # $1 is the name of Clusterrolebinding
@@ -177,10 +175,13 @@ export -f Get_SA_Workloads
 
 
 #echo $LIST_of_Privileged_SCC
-echo "$LIST_of_Privileged_SCC" 
+touch $DATA_PATH/$SCC_WORKLOADS_FILE_NAME
+#echo "$LIST_of_Privileged_SCC" 
+echo "Start scanning workloads that are in the list of LIST_of_Privileged_SCC..."
 for x in $(echo "$LIST_of_Privileged_SCC" | sed 's/ /\n/g' | sort | uniq | tr '\n' ' ') ;
 do
-  echo "SCC: $x"
+  echo -n "."
+  echo "SCC: $x" >> $DATA_PATH/$SCC_WORKLOADS_FILE_NAME
   # TODO: Get a list of service account from list of privileged SCC
   clusterrole_list=$(oc get clusterrole --all-namespaces -ojson | jq -r --arg SCC "$x" \
     '.items | [.[]? |select(.rules[]?.resourceNames[]?==$SCC)]? | .[]?.metadata.name' )
@@ -205,28 +206,22 @@ do
   #echo "$Final_SA_List"
   
   # TODO: get the workload list
-  echo "$Final_SA_List" | xargs -I {} -n 1 bash -c 'Get_SA_Workloads "$@"' _ {}
-  echo ""
+  echo "$Final_SA_List" | xargs -I {} -n 1 bash -c 'Get_SA_Workloads "$@"' _ {} \
+    >> $DATA_PATH/$SCC_WORKLOADS_FILE_NAME
+  echo "" >> $DATA_PATH/$SCC_WORKLOADS_FILE_NAME
 done
+echo "Completed scanning on workloads"
+touch $DATA_PATH/$SCC_WORKLOADS_RESULT_FILE_NAME
+# Job : diff the list of SCC's workloads
+if [ ${#LAST_SCC_WORKLOADS_FILE_NAME} -gt 0 ]; then
+  #echo "length of LAST_SCC_WORKLOADS_FILE_NAME: ${#LAST_SCC_WORKLOADS_FILE_NAME}"
+  echo "$LAST_SCC_WORKLOADS_FILE_NAME V.S. $DATA_PATH/$SCC_WORKLOADS_FILE_NAME"> $DATA_PATH/$SCC_WORKLOADS_RESULT_FILE_NAME
+  diff --context=10 $LAST_SCC_WORKLOADS_FILE_NAME $DATA_PATH/$SCC_WORKLOADS_FILE_NAME >> $DATA_PATH/$SCC_WORKLOADS_RESULT_FILE_NAME
+  DIFF_RESULT=$?
+  if [ "$DIFF_RESULT" -ne "0" ]; then
+    echo "There are some different on SCC's workloads. Please check $DATA_PATH/$SCC_WORKLOADS_RESULT_FILE_NAME"
 
-# if [ -z `lvdisplay -c "/dev/${VGNAME}/${pj_fs_code}_cldlog_${HOST#${HOST%??}}1" 2>/dev/null` ]; then
-#   # Case: Create
-#   aftergb=$(expr $freegb - $fssize)
-#   afterpercentage=$(($aftergb * 100 / $totalgb))
-#   echo "$freegb/$totalgb ($percentage%)    $aftergb/$totalgb ($afterpercentage%)"
-# else
-#   # Case: Expand
-#   current_lv_size=$(lvdisplay --units g "/dev/${VGNAME}/${pj_fs_code}_cldlog_${HOST#${HOST%??}}1" | grep "LV Size" | awk '{printf "%d\n", $3}')
-#   diff_lv_size=$(expr $fssize - $current_lv_size )
-#   # echo "fssize : $fssize"
-#   # echo "current_lv_size : $current_lv_size"
-#   # echo "diff_lv_size : $diff_lv_size"
-#   if [ $fssize -le $current_lv_size ]
-#   then
-#     # echo "diff_lv_size : $diff_lv_size"
-#     diff_lv_size=0
-#   fi
-#   aftergb=$(expr $freegb - $diff_lv_size)
-#   afterpercentage=$(($aftergb * 100 / $totalgb))
-#   echo "$freegb/$totalgb ($percentage%)    $aftergb/$totalgb ($afterpercentage%)"
-# fi
+  fi
+fi
+
+echo "[Complete]"
