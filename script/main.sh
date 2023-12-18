@@ -161,8 +161,12 @@ function Get_SA_Workloads {
   statefulSets_table=$(turn_json_to_table $statefulSets_json)
   echo "$statefulSets_table" | sed '/^$/d' |  awk '{print "StatefulSet: " $1}' | sort
 
-  # TODO: DaemonSets workloads
-
+  # DaemonSets workloads
+  daemonSets_json=$(oc get daemonSets -n $NS -ojson | jq -c --arg SA "$SA" \
+  '.items | [.[]? | select(.spec.template.spec.serviceAccountName==$SA)]? | [{ name: .[]?.metadata.name}]')
+  daemonSets_table=$(turn_json_to_table $daemonSets_json)
+  echo "$daemonSets_table" | sed '/^$/d' |  awk '{print "DaemonSet: " $1}' | sort
+  
   # CronJobs workloads
   cronjobs_json=$(oc get CronJobs -n $NS -ojson | jq --arg SA "$SA" \
   '.items | [.[]? | select(.spec.jobTemplate.spec.template.spec.serviceAccountName==$SA)]? | [ { name: .[]?.metadata.name}]')
@@ -173,7 +177,8 @@ export -f Get_SA_Workloads
 
 
 #echo $LIST_of_Privileged_SCC
-for x in $LIST_of_Privileged_SCC ;
+echo "$LIST_of_Privileged_SCC" 
+for x in $(echo "$LIST_of_Privileged_SCC" | sed 's/ /\n/g' | sort | uniq | tr '\n' ' ') ;
 do
   echo "SCC: $x"
   # TODO: Get a list of service account from list of privileged SCC
@@ -191,7 +196,12 @@ do
 "
   list_of_SA+=$(echo "$role_list" | \
       xargs -I {} -n 1 bash -c 'Get_SA_from_Rolebinding "$@"' _ {})
-  Final_SA_List=$(echo "$list_of_SA" | sort | uniq | sed '/^$/d' | sed 's/^ServiceAccount //g')
+  list_of_SA+="
+"
+  list_of_SA+=$(cat $DATA_PATH/$SCC_LIST_FILE_NAME | jq -r --arg SCC "$x" \
+  ' .[] | .[] | select(.name==$SCC) | .users[]' | grep serviceaccount | awk -F":" '{print $4" "$3}')
+
+  Final_SA_List=$(echo "$list_of_SA" | sed '/^$/d' | sed 's/^ServiceAccount //g'| sort | uniq)
   #echo "$Final_SA_List"
   
   # TODO: get the workload list

@@ -10,7 +10,7 @@ Admin keep tracking the SCC may helps on security defences aspect of Kubernetes.
 SCC is permissions determine the actions that a pod can perform and what resources it can access.
 We can just think SCC as Selinux.
 
-### How SCC attach to workloads?
+### How SCC attach to workloads? ###
 
 1. SCC config YAML direct attach to users, ServiceAccount, groups
     1. SCC -> SA
@@ -20,8 +20,15 @@ We can just think SCC as Selinux.
 2. SCC attach to roles, then ServiceAccount bind to clusterRole/Role by clusterEoleBinding/roleBinding
     1. SCC -> Role -> ClusterRoleBinding/RoleBinding -> SA
 
+## Quick Start ##
 
-## Development 
+``` sh
+cd ./script
+# review and edit .env if needed
+source ./.env && ./main.sh "/root/scc-monitoring/backup-repo/scc-monitoring/"
+```
+
+## Development ##
 
 Execute the script:
 ``` sh
@@ -34,24 +41,49 @@ Check the result:
 cd /root/scc-monitoring/backup-repo/scc-monitoring
 ll
 
-#get the list of priviledge scc's clusterrole
+# get the list of priviledge scc's clusterrole
 oc get clusterrole --all-namespaces -ojson | jq '.items | [.[] |select(.rules[]?.resourceNames[]?=="privileged")] | [.[] | {name: .metadata.name}]'
 
+# It will return
+# [
+#   {
+#     "name": "cluster-node-tuning:tuned"
+#   },
+#   {
+#     "name": "file-integrity-operator.v1.3.2-file-integrity-daemon-5799d9948"
+#   },
+#   {
+#     "name": "file-integrity-operator.v1.3.2-file-integrity-operator-8989b4ccd"
+#   },
+#   {
+#     "name": "machine-config-daemon"
+#   },
+#   {
+#     "name": "openshift-ovn-kubernetes-controller"
+#   },
+#   {
+#     "name": "system:openshift:scc:privileged"
+#   },
+#   {
+#     "name": "vmware-vsphere-csi-driver-operator-clusterrole"
+#   },
+#   {
+#     "name": "vmware-vsphere-privileged-role"
+#   }
+# ]
 
-#E.G.
+# get clusterrolebinding for the role vmware-vsphere-privileged-role
 oc get clusterrolebinding -ojson | jq '.items | [.[]? | select((.roleRef.name=="vmware-vsphere-privileged-role") and (.roleRef.kind=="ClusterRole") )] | [ .[].subjects[]? | select(.kind=="ServiceAccount") ] | (map(keys) | add | unique) as $cols | map(. as $row | $cols | map($row[.])) as $rows |  $rows[] | @csv ' | sed 's/["\/]//g' | sed 's/,/ /g'
 
-SCC: privileged
-file-integrity-daemon openshift-file-integrity
-file-integrity-operator openshift-file-integrity
-grafana-user monitoring
-grafana-user netobserv
-machine-config-daemon openshift-machine-config-operator
-minio-netobserv-sa minio-netobserv
-node-ca openshift-image-registry
-ovn-kubernetes-controller openshift-ovn-kubernetes
-tuned openshift-cluster-node-tuning-operator
-vmware-vsphere-csi-driver-controller-sa openshift-cluster-csi-drivers
-vmware-vsphere-csi-driver-node-sa openshift-cluster-csi-drivers
-vmware-vsphere-csi-driver-operator openshift-cluster-csi-drivers
+# It will return
+# ServiceAccount "SA Name" "SA namespace"
+# ServiceAccount vmware-vsphere-csi-driver-controller-sa openshift-cluster-csi-drivers
+# ServiceAccount vmware-vsphere-csi-driver-node-sa openshift-cluster-csi-drivers
 ```
+
+### jq commands ###
+
+1. change json to table
+    ``` sh
+    cat "..." | jq -r '(map(keys) | add | unique) as $cols | map(. as $row | $cols | map($row[.])) as $rows |  $col,$rows[] | @csv '
+    ```
