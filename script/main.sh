@@ -1,6 +1,8 @@
 #!/bin/sh
 
 DATA_PATH=$1
+OCP_API_URL=$2
+OCP_TOKEN=$3
 
 function usage {
   echo "Usage:
@@ -10,7 +12,7 @@ function usage {
   "
 }
 
-if [ $# -ne 1 ]; then
+if [ $# -ne 3 ]; then
   usage
   exit 1
 fi
@@ -66,10 +68,11 @@ LAST_SCC_WORKLOADS_FILE_NAME=$( get_last_item "SCC-Workloads-" "json")
 
 echo "[Start]"
 touch $DATA_PATH/$SCC_LIST_FILE_NAME
-oc get scc > /dev/null
+oc get scc --server="$OCP_API_URL" --token="$OCP_TOKEN" --insecure-skip-tls-verify > /dev/null
 
-oc get scc -ojson | jq '.items | [.[]  | {name: .metadata.name,users: .users, groups: .groups}] | sort_by(.name) | { SCClist: .}'  \
-    > $DATA_PATH/$SCC_LIST_FILE_NAME
+oc get scc -ojson --server="$OCP_API_URL" --token="$OCP_TOKEN" --insecure-skip-tls-verify \
+| jq '.items | [.[]  | {name: .metadata.name,users: .users, groups: .groups}] | sort_by(.name) | { SCClist: .}'\
+> $DATA_PATH/$SCC_LIST_FILE_NAME
 
 touch $DATA_PATH/$SCC_LIST_RESULT_FILE_NAME
 
@@ -86,7 +89,8 @@ if [ ${#LAST_SCC_LIST_FILE_NAME} -gt 0 ]; then
 fi
 
 touch $DATA_PATH/$SCC_SETTINGS_FILE_NAME
-oc get scc -ojson | jq '.items | del(.[].users, .[].groups, .[].metadata.annotations, .[].metadata.creationTimestamp, .[].metadata.generation, .[].metadata.resourceVersion, .[].metadata.uid, .[].kind) | sort_by(.metadata.name)' \
+oc get scc -ojson --server="$OCP_API_URL" --token="$OCP_TOKEN" --insecure-skip-tls-verify \
+| jq '.items | del(.[].users, .[].groups, .[].metadata.annotations, .[].metadata.creationTimestamp, .[].metadata.generation, .[].metadata.resourceVersion, .[].metadata.uid, .[].kind) | sort_by(.metadata.name)' \
     > $DATA_PATH/$SCC_SETTINGS_FILE_NAME
 
 touch $DATA_PATH/$SCC_SETTINGS_RESULT_FILE_NAME
@@ -111,9 +115,10 @@ function Get_SA_from_Clusterrolebinding {
   then
     exit 0
   fi
-  oc get clusterrolebinding -ojson | jq --arg ROLE "$1" \
-    '.items | [.[]? | select((.roleRef.name==$ROLE) and (.roleRef.kind=="ClusterRole") )]? | [ .[]?.subjects[]? | select(.kind=="ServiceAccount") ]? | (map(keys) | add | unique) as $cols | map(. as $row | $cols | map($row[.]?)) as $rows |  $rows[]? | @csv ' \
-    | sed 's/["\/]//g' | sed 's/,/ /g'
+  oc get clusterrolebinding -ojson --server="$OCP_API_URL" --token="$OCP_TOKEN" --insecure-skip-tls-verify \
+  | jq --arg ROLE "$1" \
+  '.items | [.[]? | select((.roleRef.name==$ROLE) and (.roleRef.kind=="ClusterRole") )]? | [ .[]?.subjects[]? | select(.kind=="ServiceAccount") ]? | (map(keys) | add | unique) as $cols | map(. as $row | $cols | map($row[.]?)) as $rows |  $rows[]? | @csv ' \
+  | sed 's/["\/]//g' | sed 's/,/ /g'
 }
 export -f Get_SA_from_Clusterrolebinding
 
@@ -123,9 +128,10 @@ function Get_SA_from_Rolebinding {
     exit 0
   fi
   # $1 is the name of Rolebinding
-  oc get rolebinding --all-namespaces -ojson | jq --arg ROLE "$1" \
-    '.items | [.[]? | select((.roleRef.name==$ROLE) and (.roleRef.kind=="Role") )]? | [ .[].subjects[]? | select(.kind=="ServiceAccount") ]? | (map(keys) | add | unique) as $cols | map(. as $row | $cols | map($row[.]?)) as $rows |  $rows[]? | @csv ' \
-    | sed 's/["\/]//g' | sed 's/,/ /g'
+  oc get rolebinding --all-namespaces -ojson --server="$OCP_API_URL" --token="$OCP_TOKEN" --insecure-skip-tls-verify \
+  | jq --arg ROLE "$1" \
+  '.items | [.[]? | select((.roleRef.name==$ROLE) and (.roleRef.kind=="Role") )]? | [ .[].subjects[]? | select(.kind=="ServiceAccount") ]? | (map(keys) | add | unique) as $cols | map(. as $row | $cols | map($row[.]?)) as $rows |  $rows[]? | @csv ' \
+  | sed 's/["\/]//g' | sed 's/,/ /g'
 }
 export -f Get_SA_from_Rolebinding
 
@@ -142,31 +148,36 @@ function Get_SA_Workloads {
   NS=$(echo "$1" | awk -F" " '{print $2}')
   echo "SA: $SA, NS: $NS"
   # Deployment workloads
-  deployment_json=$(oc get deployment -n $NS -ojson | jq -c --arg SA "$SA" \
+  deployment_json=$(oc get deployment -n $NS --server="$OCP_API_URL" --token="$OCP_TOKEN" --insecure-skip-tls-verify -ojson \
+  | jq -c --arg SA "$SA" \
   '.items | [.[]? | select(.spec.template.spec.serviceAccountName==$SA)]? | [{ name: .[]?.metadata.name}]')
   deployment_table=$(turn_json_to_table $deployment_json)
   echo "$deployment_table" | sed '/^$/d' |  awk '{print "Deployment: " $1}' | sort
 
   # deploymentConfig workloads
-  deploymentConfig_json=$(oc get deploymentConfig -n $NS -ojson | jq -c --arg SA "$SA" \
+  deploymentConfig_json=$(oc get deploymentConfig -n $NS -ojson --server="$OCP_API_URL" --token="$OCP_TOKEN" --insecure-skip-tls-verify \
+  | jq -c --arg SA "$SA" \
   '.items | [.[]? | select(.spec.template.spec.serviceAccountName==$SA)]? | [{ name: .[]?.metadata.name}]')
   deploymentConfig_table=$(turn_json_to_table $deploymentConfig_json)
   echo "$deploymentConfig_table" | sed '/^$/d' |  awk '{print "DeploymentConfig: " $1}' | sort
 
   # StatefulSets workloads
-  statefulSets_json=$(oc get statefulSets -n $NS -ojson | jq -c --arg SA "$SA" \
+  statefulSets_json=$(oc get statefulSets -n $NS -ojson --server="$OCP_API_URL" --token="$OCP_TOKEN" --insecure-skip-tls-verify \
+  | jq -c --arg SA "$SA" \
   '.items | [.[]? | select(.spec.template.spec.serviceAccountName==$SA)]? | [{ name: .[]?.metadata.name}]')
   statefulSets_table=$(turn_json_to_table $statefulSets_json)
   echo "$statefulSets_table" | sed '/^$/d' |  awk '{print "StatefulSet: " $1}' | sort
 
   # DaemonSets workloads
-  daemonSets_json=$(oc get daemonSets -n $NS -ojson | jq -c --arg SA "$SA" \
+  daemonSets_json=$(oc get daemonSets -n $NS -ojson --server="$OCP_API_URL" --token="$OCP_TOKEN" --insecure-skip-tls-verify \
+  | jq -c --arg SA "$SA" \
   '.items | [.[]? | select(.spec.template.spec.serviceAccountName==$SA)]? | [{ name: .[]?.metadata.name}]')
   daemonSets_table=$(turn_json_to_table $daemonSets_json)
   echo "$daemonSets_table" | sed '/^$/d' |  awk '{print "DaemonSet: " $1}' | sort
   
   # CronJobs workloads
-  cronjobs_json=$(oc get CronJobs -n $NS -ojson | jq --arg SA "$SA" \
+  cronjobs_json=$(oc get CronJobs -n $NS -ojson --server="$OCP_API_URL" --token="$OCP_TOKEN" --insecure-skip-tls-verify \
+  | jq --arg SA "$SA" \
   '.items | [.[]? | select(.spec.jobTemplate.spec.template.spec.serviceAccountName==$SA)]? | [ { name: .[]?.metadata.name}]')
   cronjobs_table=$(turn_json_to_table $cronjobs_json)
   echo "$cronjobs_table" | sed '/^$/d' |  awk '{print "CronJob: " $1}' | sort
@@ -183,15 +194,17 @@ do
   echo -n "."
   echo "SCC: $x" >> $DATA_PATH/$SCC_WORKLOADS_FILE_NAME
   # TODO: Get a list of service account from list of privileged SCC
-  clusterrole_list=$(oc get clusterrole --all-namespaces -ojson | jq -r --arg SCC "$x" \
-    '.items | [.[]? |select(.rules[]?.resourceNames[]?==$SCC)]? | .[]?.metadata.name' )
+  clusterrole_list=$(oc get clusterrole --all-namespaces -ojson --server="$OCP_API_URL" --token="$OCP_TOKEN" --insecure-skip-tls-verify\
+  | jq -r --arg SCC "$x" \
+  '.items | [.[]? |select(.rules[]?.resourceNames[]?==$SCC)]? | .[]?.metadata.name' )
   #echo "clusterrole_list: $clusterrole_list"
   list_of_SA=$(echo "$clusterrole_list" | \
       xargs -I {} -n 1 bash -c 'Get_SA_from_Clusterrolebinding "$@"' _ {} )
   #echo "$list_of_SA"
 
-  role_list=$(oc get role --all-namespaces -ojson | jq -r --arg SCC "$x" \
-    '.items | [.[]? |select(.rules[]?.resourceNames[]?==$SCC)]? | .[]?.metadata.name' )
+  role_list=$(oc get role --all-namespaces -ojson --server="$OCP_API_URL" --token="$OCP_TOKEN" --insecure-skip-tls-verify\
+  | jq -r --arg SCC "$x" \
+  '.items | [.[]? |select(.rules[]?.resourceNames[]?==$SCC)]? | .[]?.metadata.name' )
   #echo "role_list: $role_list"
   list_of_SA+="
 "
