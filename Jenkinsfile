@@ -1,10 +1,11 @@
 pipeline {
     agent any 
     stages {
-        when {
-            branch "master"
-        }
+        
         stage('build') {
+            when {
+                branch "master"
+            }
             steps {
                 sh """
                     echo "Building app..."
@@ -14,11 +15,17 @@ pipeline {
             }
         }
         stage('Code Scan') {
+            when {
+                branch "master"
+            }
             steps {
                 echo "scanning app..."
             }
         }
         stage('test') {
+            when {
+                branch "master"
+            }
             steps {
                 sh """
                     echo "Testing app..."
@@ -27,6 +34,9 @@ pipeline {
             }
         }
         stage('deploy') {
+            when {
+                branch "master"
+            }
             steps {
                 echo "Deploying app..."
             }
