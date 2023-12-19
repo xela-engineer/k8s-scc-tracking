@@ -8,17 +8,17 @@ pipeline {
         }
         stage('Code Scan') {
               steps {
-                  sh 'scanning app...'
+                echo "scanning app..."
               }
           }
         stage('test') {
               steps {
-                  sh 'Testing app...'
+                echo "Testing app..."
               }
           }
         stage('deploy') {
               steps {
-                  sh 'Deploying app...'
+                echo "Deploying app..."
               }
           }
     }
