@@ -1,6 +1,9 @@
 pipeline {
     agent any 
     stages {
+        when {
+            branch "master"
+        }
         stage('build') {
             steps {
                 sh """
