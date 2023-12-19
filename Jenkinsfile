@@ -3,8 +3,11 @@ pipeline {
     stages {
         stage('build') {
             steps {
-                echo "Building app..."
-                tree
+                sh """
+                    echo "Building app..."
+                    tree
+                """
+                
             }
         }
         stage('Code Scan') {
@@ -14,8 +17,10 @@ pipeline {
         }
         stage('test') {
             steps {
-                echo "Testing app..."
-                /usr/bin/shellcheck -s sh ./script/main.sh
+                sh """
+                    echo "Testing app..."
+                    /usr/bin/shellcheck -s sh ./script/main.sh
+                """
             }
         }
         stage('deploy') {
