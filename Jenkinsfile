@@ -8,20 +8,20 @@ pipeline {
             }
         }
         stage('Code Scan') {
-              steps {
+            steps {
                 echo "scanning app..."
-              }
-          }
+            }
+        }
         stage('test') {
-              steps {
+            steps {
                 echo "Testing app..."
-                shellcheck -s sh ./script/main.sh
-              }
-          }
+                /usr/bin/shellcheck -s sh ./script/main.sh
+            }
+        }
         stage('deploy') {
-              steps {
+            steps {
                 echo "Deploying app..."
-              }
-          }
+            }
+        }
     }
 }
