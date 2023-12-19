@@ -4,7 +4,7 @@ pipeline {
         
         stage('build') {
             when {
-                branch "master"
+                branch "main"
             }
             steps {
                 sh """
@@ -16,7 +16,7 @@ pipeline {
         }
         stage('Code Scan') {
             when {
-                branch "master"
+                branch "main"
             }
             steps {
                 echo "scanning app..."
@@ -24,7 +24,7 @@ pipeline {
         }
         stage('test') {
             when {
-                branch "master"
+                branch "main"
             }
             steps {
                 sh """
@@ -35,7 +35,7 @@ pipeline {
         }
         stage('deploy') {
             when {
-                branch "master"
+                branch "main"
             }
             steps {
                 echo "Deploying app..."
