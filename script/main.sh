@@ -84,7 +84,7 @@ if [ ${#LAST_SCC_LIST_FILE_NAME} -gt 0 ]; then
   DIFF_RESULT=$?
   if [ "$DIFF_RESULT" -ne "0" ]; then
     echo "There are some different on SCC list. Please check $DATA_PATH/$SCC_LIST_RESULT_FILE_NAME"
-
+    cat $DATA_PATH/$SCC_LIST_RESULT_FILE_NAME | mail -s "[Alert] SCC list had changed in the $OCP_NAME" $t6_support_email
   fi
 fi
 
@@ -103,7 +103,7 @@ if [ ${#LAST_SCC_SETTINGS_FILE_NAME} -gt 0 ]; then
   diff --context=10 $LAST_SCC_SETTINGS_FILE_NAME $DATA_PATH/$SCC_SETTINGS_FILE_NAME >> $DATA_PATH/$SCC_SETTINGS_RESULT_FILE_NAME
   if [ "$DIFF_RESULT" -ne "0" ]; then
     echo "There are some different on SCC settings. Please check $DATA_PATH/$SCC_SETTINGS_RESULT_FILE_NAME"
-
+    cat $DATA_PATH/$SCC_SETTINGS_RESULT_FILE_NAME | mail -s "[Alert] Some SCC settings had changed in the $OCP_NAME" $t6_support_email
   fi
 fi
 
@@ -233,7 +233,7 @@ if [ ${#LAST_SCC_WORKLOADS_FILE_NAME} -gt 0 ]; then
   DIFF_RESULT=$?
   if [ "$DIFF_RESULT" -ne "0" ]; then
     echo "There are some different on SCC's workloads. Please check $DATA_PATH/$SCC_WORKLOADS_RESULT_FILE_NAME"
-
+    cat $DATA_PATH/$SCC_WORKLOADS_RESULT_FILE_NAME | mail -s "[Alert] The list of workloads using privileged SCC had changed in the $OCP_NAME" $t6_support_email
   fi
 fi
 

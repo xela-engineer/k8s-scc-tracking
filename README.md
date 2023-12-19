@@ -25,7 +25,7 @@ We can just think SCC as Selinux.
 ``` sh
 cd ./script
 # review and edit .env if needed
-source ./.env && ./main.sh "/root/scc-monitoring/backup-repo/scc-monitoring/"
+source ./.env && ./main.sh "/root/scc-monitoring/backup-repo/scc-monitoring/" "https://api.das2.expert.com:6443" "OCP API token"
 ```
 
 ## Development ##
@@ -33,7 +33,7 @@ source ./.env && ./main.sh "/root/scc-monitoring/backup-repo/scc-monitoring/"
 Execute the script:
 ``` sh
 cd /root/scc-monitoring/k8s-scc-tracking/script
-source ./.env && ./main.sh "/root/scc-monitoring/backup-repo/scc-monitoring/"
+source ./.env && ./main.sh "/root/scc-monitoring/backup-repo/scc-monitoring/" "https://api.das2.expert.com:6443" "OCP API token"
 ```
 
 Check the result:
