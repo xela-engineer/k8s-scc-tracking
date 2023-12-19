@@ -4,6 +4,7 @@ pipeline {
         stage('build') {
             steps {
                 echo "Building app..."
+                tree
             }
         }
         stage('Code Scan') {
@@ -14,6 +15,7 @@ pipeline {
         stage('test') {
               steps {
                 echo "Testing app..."
+                shellcheck -s sh ./script/main.sh
               }
           }
         stage('deploy') {
