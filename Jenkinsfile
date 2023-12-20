@@ -1,3 +1,4 @@
+
 pipeline {
     agent any 
     stages {
@@ -40,6 +41,14 @@ pipeline {
             steps {
                 echo "Deploying app..."
             }
+        }
+    }
+    post {
+        failure {
+        // notify users when the Pipeline fails
+        mail to: 'alex23woo@gmail.com',
+            subject: "Failed Pipeline: ${currentBuild.fullDisplayName}",
+            body: "Something is wrong with ${env.BUILD_URL}"
         }
     }
 }
