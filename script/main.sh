@@ -1,8 +1,8 @@
 #!/bin/sh
 
 DATA_PATH=$1
-OCP_API_URL=$2
-OCP_TOKEN=$3
+export OCP_API_URL=$2
+export OCP_TOKEN=$3
 
 function usage {
   echo "Usage:
@@ -84,7 +84,7 @@ if [ ${#LAST_SCC_LIST_FILE_NAME} -gt 0 ]; then
   DIFF_RESULT=$?
   if [ "$DIFF_RESULT" -ne "0" ]; then
     echo "There are some different on SCC list. Please check $DATA_PATH/$SCC_LIST_RESULT_FILE_NAME"
-    cat $DATA_PATH/$SCC_LIST_RESULT_FILE_NAME | mail -s "[Alert] SCC list had changed in the $OCP_NAME" $t6_support_email
+    #cat $DATA_PATH/$SCC_LIST_RESULT_FILE_NAME | mail -s "[Alert] SCC list had changed in the $OCP_NAME" $t6_support_email
   fi
 fi
 
@@ -103,7 +103,7 @@ if [ ${#LAST_SCC_SETTINGS_FILE_NAME} -gt 0 ]; then
   diff --context=10 $LAST_SCC_SETTINGS_FILE_NAME $DATA_PATH/$SCC_SETTINGS_FILE_NAME >> $DATA_PATH/$SCC_SETTINGS_RESULT_FILE_NAME
   if [ "$DIFF_RESULT" -ne "0" ]; then
     echo "There are some different on SCC settings. Please check $DATA_PATH/$SCC_SETTINGS_RESULT_FILE_NAME"
-    cat $DATA_PATH/$SCC_SETTINGS_RESULT_FILE_NAME | mail -s "[Alert] Some SCC settings had changed in the $OCP_NAME" $t6_support_email
+    #cat $DATA_PATH/$SCC_SETTINGS_RESULT_FILE_NAME | mail -s "[Alert] Some SCC settings had changed in the $OCP_NAME" $t6_support_email
   fi
 fi
 
@@ -185,24 +185,23 @@ function Get_SA_Workloads {
 export -f Get_SA_Workloads
 
 
-#echo $LIST_of_Privileged_SCC
 touch $DATA_PATH/$SCC_WORKLOADS_FILE_NAME
-#echo "$LIST_of_Privileged_SCC" 
+#echo "LIST_of_Privileged_SCC: $LIST_of_Privileged_SCC" 
 echo "Start scanning workloads that are in the list of LIST_of_Privileged_SCC..."
 for x in $(echo "$LIST_of_Privileged_SCC" | sed 's/ /\n/g' | sort | uniq | tr '\n' ' ') ;
 do
   echo -n "."
   echo "SCC: $x" >> $DATA_PATH/$SCC_WORKLOADS_FILE_NAME
-  # TODO: Get a list of service account from list of privileged SCC
-  clusterrole_list=$(oc get clusterrole --all-namespaces -ojson --server="$OCP_API_URL" --token="$OCP_TOKEN" --insecure-skip-tls-verify\
+  # Get a list of service account from list of privileged SCC
+  clusterrole_list=$(oc get clusterrole --all-namespaces -ojson --server="$OCP_API_URL" --token="$OCP_TOKEN" --insecure-skip-tls-verify \
   | jq -r --arg SCC "$x" \
   '.items | [.[]? |select(.rules[]?.resourceNames[]?==$SCC)]? | .[]?.metadata.name' )
   #echo "clusterrole_list: $clusterrole_list"
-  list_of_SA=$(echo "$clusterrole_list" | \
-      xargs -I {} -n 1 bash -c 'Get_SA_from_Clusterrolebinding "$@"' _ {} )
-  #echo "$list_of_SA"
+  list_of_SA=$(echo "$clusterrole_list" \
+  | xargs -I {} -n 1 bash -c 'Get_SA_from_Clusterrolebinding "$@"' _ {} )
+  #echo "list_of_SA1:$list_of_SA"
 
-  role_list=$(oc get role --all-namespaces -ojson --server="$OCP_API_URL" --token="$OCP_TOKEN" --insecure-skip-tls-verify\
+  role_list=$(oc get role --all-namespaces -ojson --server="$OCP_API_URL" --token="$OCP_TOKEN" --insecure-skip-tls-verify \
   | jq -r --arg SCC "$x" \
   '.items | [.[]? |select(.rules[]?.resourceNames[]?==$SCC)]? | .[]?.metadata.name' )
   #echo "role_list: $role_list"
@@ -213,12 +212,13 @@ do
   list_of_SA+="
 "
   list_of_SA+=$(cat $DATA_PATH/$SCC_LIST_FILE_NAME | jq -r --arg SCC "$x" \
-  ' .[] | .[] | select(.name==$SCC) | .users[]' | grep serviceaccount | awk -F":" '{print $4" "$3}')
+  ' .[] | .[] | select(.name==$SCC) | .users[]' | grep serviceaccount \
+  | awk -F":" '{print $4" "$3}')
 
   Final_SA_List=$(echo "$list_of_SA" | sed '/^$/d' | sed 's/^ServiceAccount //g'| sort | uniq)
   #echo "$Final_SA_List"
   
-  # TODO: get the workload list
+  # Get the workload list
   echo "$Final_SA_List" | xargs -I {} -n 1 bash -c 'Get_SA_Workloads "$@"' _ {} \
     >> $DATA_PATH/$SCC_WORKLOADS_FILE_NAME
   echo "" >> $DATA_PATH/$SCC_WORKLOADS_FILE_NAME
@@ -233,7 +233,7 @@ if [ ${#LAST_SCC_WORKLOADS_FILE_NAME} -gt 0 ]; then
   DIFF_RESULT=$?
   if [ "$DIFF_RESULT" -ne "0" ]; then
     echo "There are some different on SCC's workloads. Please check $DATA_PATH/$SCC_WORKLOADS_RESULT_FILE_NAME"
-    cat $DATA_PATH/$SCC_WORKLOADS_RESULT_FILE_NAME | mail -s "[Alert] The list of workloads using privileged SCC had changed in the $OCP_NAME" $t6_support_email
+    #cat $DATA_PATH/$SCC_WORKLOADS_RESULT_FILE_NAME | mail -s "[Alert] The list of workloads using privileged SCC had changed in the $OCP_NAME" $t6_support_email
   fi
 fi
 
