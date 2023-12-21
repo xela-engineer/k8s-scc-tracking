@@ -12,13 +12,14 @@ pipeline {
             }
             steps {
                 withCredentials([
-                    credentialsId: 'OCP_login',
-                    passwordVariable: 'OCP_TOKEN', 
-                    usernameVariable: 'OCP_URL'
+                    usernamePassword(
+                        credentialsId: 'OCP_login',
+                        usernameVariable: 'OCP_URL', 
+                        passwordVariable: 'OCP_TOKEN')
                 ]){
                     sh "echo ${passwordVariable} "
                 }
-                
+
                 sh """
                     echo "Building shell script to exec file: ${compile_file_name}"
                     
