@@ -1,6 +1,9 @@
 
 pipeline {
     agent any 
+    environment {
+        compile_file_name = 'K8S-SCC-tracking'
+    }
     stages {
         
         stage('build') {
@@ -8,9 +11,17 @@ pipeline {
                 branch "main"
             }
             steps {
+                withCredentials([
+                    credentialsId: 'OCP_login',
+                    passwordVariable: 'OCP_TOKEN', 
+                    usernameVariable: 'OCP_URL'
+                ]){
+                    sh "echo ${passwordVariable} "
+                }
+                
                 sh """
-                    echo "Building app..."
-                    tree
+                    echo "Building shell script to exec file: ${compile_file_name}"
+                    
                 """
                 
             }
