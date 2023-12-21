@@ -25,6 +25,7 @@ pipeline {
             steps {
                 sh """
                     echo "Code quality scanning..."
+                    shellcheck disable=SC2140,
                     /usr/bin/shellcheck -s bash ./script/main.sh
                 """
             }

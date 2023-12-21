@@ -38,7 +38,7 @@ turn_json_to_table() {
     exit 0
   fi
   #echo "function input : $1"
-  if [ "$(jq length <<< $1)" -eq 0 ] ; then
+  if [ "$(jq length <<< "$1")" -eq 0 ] ; then
     exit 0
   fi
 
@@ -212,7 +212,7 @@ do
       xargs -I {} -n 1 bash -c 'Get_SA_from_Rolebinding "$@"' _ {})
   list_of_SA+="
 "
-  list_of_SA+=$(cat $DATA_PATH/$SCC_LIST_FILE_NAME | jq -r --arg SCC "$x" \
+  list_of_SA+=$(cat "$DATA_PATH"/"$SCC_LIST_FILE_NAME" | jq -r --arg SCC "$x" \
   ' .[] | .[] | select(.name==$SCC) | .users[]' | grep serviceaccount \
   | awk -F":" '{print $4" "$3}')
 
