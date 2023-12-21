@@ -52,7 +52,7 @@ pipeline {
         
         stage('deploy') {
             when {
-                branch "main"
+                branch "release"
             }
             steps {
                 echo "Deploying app..."
