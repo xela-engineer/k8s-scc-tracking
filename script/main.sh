@@ -1,8 +1,8 @@
 #!/bin/sh
 
-DATA_PATH=$1
-export OCP_API_URL=$2
-export OCP_TOKEN=$3
+DATA_PATH="$1"
+export OCP_API_URL="$2"
+export OCP_TOKEN="$3"
 
 usage() {
   echo "Usage:
@@ -48,7 +48,7 @@ turn_json_to_table() {
 }
 export -f turn_json_to_table
 
-timestamp=`date  +'%Y%m%d-%H%M%S'`
+timestamp=$(date  +'%Y%m%d-%H%M%S')
 SCC_LIST_FILE_NAME="SCC-list-$timestamp.json"
 SCC_LIST_RESULT_FILE_NAME="SCC-list-compare-$timestamp.log"
 SCC_SETTINGS_FILE_NAME="SCC-settings-details-$timestamp.json"
@@ -81,7 +81,7 @@ touch "$DATA_PATH"/"$SCC_LIST_RESULT_FILE_NAME"
 if [ ${#LAST_SCC_LIST_FILE_NAME} -gt 0 ]; then
   #echo "length of LAST_SCC_LIST_FILE_NAME: ${#LAST_SCC_LIST_FILE_NAME}"
   echo "$LAST_SCC_LIST_FILE_NAME V.S. $DATA_PATH/$SCC_LIST_FILE_NAME"> "$DATA_PATH"/"$SCC_LIST_RESULT_FILE_NAME"
-  diff --context=10 $LAST_SCC_LIST_FILE_NAME $DATA_PATH/$SCC_LIST_FILE_NAME >> "$DATA_PATH"/"$SCC_LIST_RESULT_FILE_NAME"
+  diff --context=10 "$LAST_SCC_LIST_FILE_NAME" "$DATA_PATH"/"$SCC_LIST_FILE_NAME" >> "$DATA_PATH"/"$SCC_LIST_RESULT_FILE_NAME"
   DIFF_RESULT=$?
   if [ "$DIFF_RESULT" -ne "0" ]; then
     echo "There are some different on SCC list. Please check $DATA_PATH/$SCC_LIST_RESULT_FILE_NAME"
@@ -110,7 +110,7 @@ fi
 
 # Keep track on a list of workloads that use privileged Security Context Constraints
  
-function Get_SA_from_Clusterrolebinding {
+Get_SA_from_Clusterrolebinding() {
   # $1 is the name of Clusterrolebinding
   if [ -z "$1" ]
   then
@@ -123,7 +123,7 @@ function Get_SA_from_Clusterrolebinding {
 }
 export -f Get_SA_from_Clusterrolebinding
 
-function Get_SA_from_Rolebinding {
+Get_SA_from_Rolebinding() {
   if [ -z "$1" ]
   then
     exit 0
@@ -136,7 +136,7 @@ function Get_SA_from_Rolebinding {
 }
 export -f Get_SA_from_Rolebinding
 
-function Get_SA_Workloads {
+Get_SA_Workloads() {
   # $1 is the name of Service  Account
   # this function helps to get a list of workloads of using a specific SA
   if [ -z "$1" ]
@@ -149,50 +149,50 @@ function Get_SA_Workloads {
   NS=$(echo "$1" | awk -F" " '{print $2}')
   echo "SA: $SA, NS: $NS"
   # Deployment workloads
-  deployment_json=$(oc get deployment -n $NS --server="$OCP_API_URL" --token="$OCP_TOKEN" --insecure-skip-tls-verify -ojson \
+  deployment_json=$(oc get deployment -n "$NS" --server="$OCP_API_URL" --token="$OCP_TOKEN" --insecure-skip-tls-verify -ojson \
   | jq -c --arg SA "$SA" \
   '.items | [.[]? | select(.spec.template.spec.serviceAccountName==$SA)]? | [{ name: .[]?.metadata.name}]')
-  deployment_table=$(turn_json_to_table $deployment_json)
+  deployment_table=$(turn_json_to_table "$deployment_json")
   echo "$deployment_table" | sed '/^$/d' |  awk '{print "Deployment: " $1}' | sort
 
   # deploymentConfig workloads
-  deploymentConfig_json=$(oc get deploymentConfig -n $NS -ojson --server="$OCP_API_URL" --token="$OCP_TOKEN" --insecure-skip-tls-verify \
+  deploymentConfig_json=$(oc get deploymentConfig -n "$NS" -ojson --server="$OCP_API_URL" --token="$OCP_TOKEN" --insecure-skip-tls-verify \
   | jq -c --arg SA "$SA" \
   '.items | [.[]? | select(.spec.template.spec.serviceAccountName==$SA)]? | [{ name: .[]?.metadata.name}]')
-  deploymentConfig_table=$(turn_json_to_table $deploymentConfig_json)
+  deploymentConfig_table=$(turn_json_to_table "$deploymentConfig_json")
   echo "$deploymentConfig_table" | sed '/^$/d' |  awk '{print "DeploymentConfig: " $1}' | sort
 
   # StatefulSets workloads
-  statefulSets_json=$(oc get statefulSets -n $NS -ojson --server="$OCP_API_URL" --token="$OCP_TOKEN" --insecure-skip-tls-verify \
+  statefulSets_json=$(oc get statefulSets -n "$NS" -ojson --server="$OCP_API_URL" --token="$OCP_TOKEN" --insecure-skip-tls-verify \
   | jq -c --arg SA "$SA" \
   '.items | [.[]? | select(.spec.template.spec.serviceAccountName==$SA)]? | [{ name: .[]?.metadata.name}]')
-  statefulSets_table=$(turn_json_to_table $statefulSets_json)
+  statefulSets_table=$(turn_json_to_table "$statefulSets_json")
   echo "$statefulSets_table" | sed '/^$/d' |  awk '{print "StatefulSet: " $1}' | sort
 
   # DaemonSets workloads
-  daemonSets_json=$(oc get daemonSets -n $NS -ojson --server="$OCP_API_URL" --token="$OCP_TOKEN" --insecure-skip-tls-verify \
+  daemonSets_json=$(oc get daemonSets -n "$NS" -ojson --server="$OCP_API_URL" --token="$OCP_TOKEN" --insecure-skip-tls-verify \
   | jq -c --arg SA "$SA" \
   '.items | [.[]? | select(.spec.template.spec.serviceAccountName==$SA)]? | [{ name: .[]?.metadata.name}]')
-  daemonSets_table=$(turn_json_to_table $daemonSets_json)
+  daemonSets_table=$(turn_json_to_table "$daemonSets_json")
   echo "$daemonSets_table" | sed '/^$/d' |  awk '{print "DaemonSet: " $1}' | sort
   
   # CronJobs workloads
-  cronjobs_json=$(oc get CronJobs -n $NS -ojson --server="$OCP_API_URL" --token="$OCP_TOKEN" --insecure-skip-tls-verify \
+  cronjobs_json=$(oc get CronJobs -n "$NS" -ojson --server="$OCP_API_URL" --token="$OCP_TOKEN" --insecure-skip-tls-verify \
   | jq --arg SA "$SA" \
   '.items | [.[]? | select(.spec.jobTemplate.spec.template.spec.serviceAccountName==$SA)]? | [ { name: .[]?.metadata.name}]')
-  cronjobs_table=$(turn_json_to_table $cronjobs_json)
+  cronjobs_table=$(turn_json_to_table "$cronjobs_json")
   echo "$cronjobs_table" | sed '/^$/d' |  awk '{print "CronJob: " $1}' | sort
 }
 export -f Get_SA_Workloads
 
 
-touch $DATA_PATH/$SCC_WORKLOADS_FILE_NAME
+touch "$DATA_PATH"/"$SCC_WORKLOADS_FILE_NAME"
 #echo "LIST_of_Privileged_SCC: $LIST_of_Privileged_SCC" 
 echo "Start scanning workloads that are in the list of LIST_of_Privileged_SCC..."
 for x in $(echo "$LIST_of_Privileged_SCC" | sed 's/ /\n/g' | sort | uniq | tr '\n' ' ') ;
 do
   echo -n "."
-  echo "SCC: $x" >> $DATA_PATH/$SCC_WORKLOADS_FILE_NAME
+  echo "SCC: $x" >> "$DATA_PATH"/"$SCC_WORKLOADS_FILE_NAME"
   # Get a list of service account from list of privileged SCC
   clusterrole_list=$(oc get clusterrole --all-namespaces -ojson --server="$OCP_API_URL" --token="$OCP_TOKEN" --insecure-skip-tls-verify \
   | jq -r --arg SCC "$x" \
@@ -229,10 +229,11 @@ touch "$DATA_PATH"/"$SCC_WORKLOADS_RESULT_FILE_NAME"
 # Job : diff the list of SCC's workloads
 if [ ${#LAST_SCC_WORKLOADS_FILE_NAME} -gt 0 ]; then
   #echo "length of LAST_SCC_WORKLOADS_FILE_NAME: ${#LAST_SCC_WORKLOADS_FILE_NAME}"
-  echo "$LAST_SCC_WORKLOADS_FILE_NAME V.S. $DATA_PATH/$SCC_WORKLOADS_FILE_NAME"> "$DATA_PATH"/"$SCC_WORKLOADS_RESULT_FILE_NAME"
+  
   diff --context=10 "$LAST_SCC_WORKLOADS_FILE_NAME" "$DATA_PATH"/"$SCC_WORKLOADS_FILE_NAME" >> "$DATA_PATH/$SCC_WORKLOADS_RESULT_FILE_NAME"
   DIFF_RESULT=$?
   if [ "$DIFF_RESULT" -ne "0" ]; then
+    echo "$LAST_SCC_WORKLOADS_FILE_NAME V.S. $DATA_PATH/$SCC_WORKLOADS_FILE_NAME"> "$DATA_PATH"/"$SCC_WORKLOADS_RESULT_FILE_NAME"
     echo "There are some different on SCC's workloads. Please check $DATA_PATH/$SCC_WORKLOADS_RESULT_FILE_NAME"
     #cat $DATA_PATH/$SCC_WORKLOADS_RESULT_FILE_NAME | mail -s "[Alert] The list of workloads using privileged SCC had changed in the $OCP_NAME" $t6_support_email
   fi
