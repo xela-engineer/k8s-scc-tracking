@@ -11,41 +11,45 @@ pipeline {
                 branch "main"
             }
             steps {
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: 'OCP_login',
-                        usernameVariable: 'OCP_URL', 
-                        passwordVariable: 'OCP_TOKEN')
-                ]){
-                    sh "echo ${OCP_URL} "
-                }
-
                 sh """
                     echo "Building shell script to exec file: ${compile_file_name}"
-                    
+                    shc -vrf ./script/main.sh -o k8s-scc
                 """
-                
             }
         }
+
         stage('Code Scan') {
             when {
                 branch "main"
             }
             steps {
-                echo "scanning app..."
+                sh """
+                    echo "Code quality scanning..."
+                    /usr/bin/shellcheck -s sh ./script/main.sh
+                """
             }
         }
-        stage('test') {
+        stage('Test') {
             when {
                 branch "main"
             }
             steps {
                 sh """
                     echo "Testing app..."
-                    /usr/bin/shellcheck -s sh ./script/main.sh
                 """
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'OCP_login',
+                        usernameVariable: 'OCP_URL', 
+                        passwordVariable: 'OCP_TOKEN')
+                ]){
+                    sh """
+                        ./k8s-scc "${OCP_URL}" "${OCP_TOKEN}"
+                    """    
+                }
             }
         }
+        
         stage('deploy') {
             when {
                 branch "main"
