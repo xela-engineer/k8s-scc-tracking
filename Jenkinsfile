@@ -25,7 +25,7 @@ pipeline {
             steps {
                 sh """
                     echo "Code quality scanning..."
-                    /usr/bin/shellcheck -s sh ./script/main.sh
+                    /usr/bin/shellcheck -s bash ./script/main.sh
                 """
             }
         }
