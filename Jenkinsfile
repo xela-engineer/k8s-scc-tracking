@@ -14,7 +14,6 @@ pipeline {
                 sh """
                     echo "Building shell script to exec file: ${compile_file_name}"
                     shc -vrf ./script/main.sh -o k8s-scc
-                    ./k8s-scc
                 """
             }
         }

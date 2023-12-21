@@ -4,11 +4,12 @@ DATA_PATH=$1
 export OCP_API_URL=$2
 export OCP_TOKEN=$3
 
-function usage {
+usage() {
   echo "Usage:
   ${SCRIPTNAME} <log and result path>
   - e.g.
-  # source ./.env && ./main.sh "/root/scc-monitoring/backup-repo/scc-monitoring/"
+  # source ./.env && ./main.sh "/root/scc-monitoring/backup-repo/scc-monitoring/" "ocp_url" "ocp_token"
+  # source ./.env && ./k8s-scc "/root/scc-monitoring/backup-repo/scc-monitoring/" "ocp_url" "ocp_token"
   "
 }
 
@@ -17,14 +18,14 @@ if [ $# -ne 3 ]; then
   exit 1
 fi
 
-function get_last_item {
+get_last_item() {
   # $1 is the prefix of the file name
   # $2 is file type
   # echo "Get the lastest file which is starting with $1"
-  ls -t $DATA_PATH/$1*.$2 | head -n 1
+  ls -t "$DATA_PATH"/"$1"*."$2" | head -n 1
 }
 
-function turn_json_to_table {
+turn_json_to_table() {
   # $1 is the input variable JSON
   # The output of this function will return example like this:
   # Input : [ {"name": "pod1", "namespace": "ns1"}, {"name": "pod2", "namespace": "ns2"}]
@@ -67,20 +68,20 @@ LAST_SCC_WORKLOADS_FILE_NAME=$( get_last_item "SCC-Workloads-" "json")
 # echo "LAST_SCC_WORKLOADS_FILE_NAME: $LAST_SCC_WORKLOADS_FILE_NAME"
 
 echo "[Start]"
-touch $DATA_PATH/$SCC_LIST_FILE_NAME
+touch "$DATA_PATH"/"$SCC_LIST_FILE_NAME"
 oc get scc --server="$OCP_API_URL" --token="$OCP_TOKEN" --insecure-skip-tls-verify > /dev/null
 
 oc get scc -ojson --server="$OCP_API_URL" --token="$OCP_TOKEN" --insecure-skip-tls-verify \
 | jq '.items | [.[]  | {name: .metadata.name,users: .users, groups: .groups}] | sort_by(.name) | { SCClist: .}'\
-> $DATA_PATH/$SCC_LIST_FILE_NAME
+> "$DATA_PATH"/"$SCC_LIST_FILE_NAME"
 
-touch $DATA_PATH/$SCC_LIST_RESULT_FILE_NAME
+touch "$DATA_PATH"/"$SCC_LIST_RESULT_FILE_NAME"
 
 # Job : diff the list of SCC
 if [ ${#LAST_SCC_LIST_FILE_NAME} -gt 0 ]; then
   #echo "length of LAST_SCC_LIST_FILE_NAME: ${#LAST_SCC_LIST_FILE_NAME}"
-  echo "$LAST_SCC_LIST_FILE_NAME V.S. $DATA_PATH/$SCC_LIST_FILE_NAME"> $DATA_PATH/$SCC_LIST_RESULT_FILE_NAME
-  diff --context=10 $LAST_SCC_LIST_FILE_NAME $DATA_PATH/$SCC_LIST_FILE_NAME >> $DATA_PATH/$SCC_LIST_RESULT_FILE_NAME
+  echo "$LAST_SCC_LIST_FILE_NAME V.S. $DATA_PATH/$SCC_LIST_FILE_NAME"> "$DATA_PATH"/"$SCC_LIST_RESULT_FILE_NAME"
+  diff --context=10 $LAST_SCC_LIST_FILE_NAME $DATA_PATH/$SCC_LIST_FILE_NAME >> "$DATA_PATH"/"$SCC_LIST_RESULT_FILE_NAME"
   DIFF_RESULT=$?
   if [ "$DIFF_RESULT" -ne "0" ]; then
     echo "There are some different on SCC list. Please check $DATA_PATH/$SCC_LIST_RESULT_FILE_NAME"
@@ -88,19 +89,19 @@ if [ ${#LAST_SCC_LIST_FILE_NAME} -gt 0 ]; then
   fi
 fi
 
-touch $DATA_PATH/$SCC_SETTINGS_FILE_NAME
+touch "$DATA_PATH"/"$SCC_SETTINGS_FILE_NAME"
 oc get scc -ojson --server="$OCP_API_URL" --token="$OCP_TOKEN" --insecure-skip-tls-verify \
 | jq '.items | del(.[].users, .[].groups, .[].metadata.annotations, .[].metadata.creationTimestamp, .[].metadata.generation, .[].metadata.resourceVersion, .[].metadata.uid, .[].kind) | sort_by(.metadata.name)' \
-    > $DATA_PATH/$SCC_SETTINGS_FILE_NAME
+    > "$DATA_PATH"/"$SCC_SETTINGS_FILE_NAME"
 
-touch $DATA_PATH/$SCC_SETTINGS_RESULT_FILE_NAME
+touch "$DATA_PATH"/"$SCC_SETTINGS_RESULT_FILE_NAME"
 # Job : diff the list of SCC's permissions details
 if [ ${#LAST_SCC_SETTINGS_FILE_NAME} -gt 0 ]; then
   #echo "length of LAST_SCC_SETTINGS_FILE_NAME: ${#LAST_SCC_SETTINGS_FILE_NAME}"
-  echo "$LAST_SCC_SETTINGS_FILE_NAME V.S. $DATA_PATH/$SCC_SETTINGS_FILE_NAME"> $DATA_PATH/$SCC_SETTINGS_RESULT_FILE_NAME
-  diff --context=10 $LAST_SCC_SETTINGS_FILE_NAME $DATA_PATH/$SCC_SETTINGS_FILE_NAME > /dev/null
+  echo "$LAST_SCC_SETTINGS_FILE_NAME V.S. $DATA_PATH/$SCC_SETTINGS_FILE_NAME"> "$DATA_PATH"/"$SCC_SETTINGS_RESULT_FILE_NAME"
+  diff --context=10 "$LAST_SCC_SETTINGS_FILE_NAME" "$DATA_PATH"/"$SCC_SETTINGS_FILE_NAME" > /dev/null
   DIFF_RESULT=$?
-  diff --context=10 $LAST_SCC_SETTINGS_FILE_NAME $DATA_PATH/$SCC_SETTINGS_FILE_NAME >> $DATA_PATH/$SCC_SETTINGS_RESULT_FILE_NAME
+  diff --context=10 "$LAST_SCC_SETTINGS_FILE_NAME" "$DATA_PATH"/"$SCC_SETTINGS_FILE_NAME" >> "$DATA_PATH"/"$SCC_SETTINGS_RESULT_FILE_NAME"
   if [ "$DIFF_RESULT" -ne "0" ]; then
     echo "There are some different on SCC settings. Please check $DATA_PATH/$SCC_SETTINGS_RESULT_FILE_NAME"
     #cat $DATA_PATH/$SCC_SETTINGS_RESULT_FILE_NAME | mail -s "[Alert] Some SCC settings had changed in the $OCP_NAME" $t6_support_email
@@ -220,16 +221,16 @@ do
   
   # Get the workload list
   echo "$Final_SA_List" | xargs -I {} -n 1 bash -c 'Get_SA_Workloads "$@"' _ {} \
-    >> $DATA_PATH/$SCC_WORKLOADS_FILE_NAME
-  echo "" >> $DATA_PATH/$SCC_WORKLOADS_FILE_NAME
+    >> "$DATA_PATH"/"$SCC_WORKLOADS_FILE_NAME"
+  echo "" >> "$DATA_PATH"/"$SCC_WORKLOADS_FILE_NAME"
 done
 echo "Completed scanning on workloads"
-touch $DATA_PATH/$SCC_WORKLOADS_RESULT_FILE_NAME
+touch "$DATA_PATH"/"$SCC_WORKLOADS_RESULT_FILE_NAME"
 # Job : diff the list of SCC's workloads
 if [ ${#LAST_SCC_WORKLOADS_FILE_NAME} -gt 0 ]; then
   #echo "length of LAST_SCC_WORKLOADS_FILE_NAME: ${#LAST_SCC_WORKLOADS_FILE_NAME}"
-  echo "$LAST_SCC_WORKLOADS_FILE_NAME V.S. $DATA_PATH/$SCC_WORKLOADS_FILE_NAME"> $DATA_PATH/$SCC_WORKLOADS_RESULT_FILE_NAME
-  diff --context=10 $LAST_SCC_WORKLOADS_FILE_NAME $DATA_PATH/$SCC_WORKLOADS_FILE_NAME >> $DATA_PATH/$SCC_WORKLOADS_RESULT_FILE_NAME
+  echo "$LAST_SCC_WORKLOADS_FILE_NAME V.S. $DATA_PATH/$SCC_WORKLOADS_FILE_NAME"> "$DATA_PATH"/"$SCC_WORKLOADS_RESULT_FILE_NAME"
+  diff --context=10 "$LAST_SCC_WORKLOADS_FILE_NAME" "$DATA_PATH"/"$SCC_WORKLOADS_FILE_NAME" >> "$DATA_PATH/$SCC_WORKLOADS_RESULT_FILE_NAME"
   DIFF_RESULT=$?
   if [ "$DIFF_RESULT" -ne "0" ]; then
     echo "There are some different on SCC's workloads. Please check $DATA_PATH/$SCC_WORKLOADS_RESULT_FILE_NAME"
