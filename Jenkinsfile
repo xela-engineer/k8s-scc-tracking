@@ -17,7 +17,7 @@ pipeline {
                         usernameVariable: 'OCP_URL', 
                         passwordVariable: 'OCP_TOKEN')
                 ]){
-                    sh "echo ${passwordVariable} "
+                    sh "echo ${OCP_URL} "
                 }
 
                 sh """
