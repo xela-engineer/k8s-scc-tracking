@@ -62,10 +62,20 @@ pipeline {
     }
     post {
         failure {
-        // notify users when the Pipeline fails
-        mail to: 'alex23woo@gmail.com',
-            subject: "Failed Pipeline: ${currentBuild.fullDisplayName}",
-            body: "Something is wrong with ${env.BUILD_URL}"
+            // notify users when the Pipeline fails
+            // mail to: 'alex23woo@gmail.com',
+            //     subject: "Failed Pipeline: ${currentBuild.fullDisplayName}",
+            //     body: "Something is wrong with ${env.BUILD_URL}"
+            slackSend( channel: "#Jenkins", token: "slack_webhook token", color: "good", message: "${custom_msg()}")
         }
     }
+}
+
+def custom_msg()
+{
+  def JENKINS_URL= "localhost:8888"
+  def JOB_NAME = env.JOB_NAME
+  def BUILD_ID= env.BUILD_ID
+  def JENKINS_LOG= " FAILED: Job [${env.JOB_NAME}] Logs path: ${JENKINS_URL}/job/${JOB_NAME}/${BUILD_ID}/consoleText"
+  return JENKINS_LOG
 }
