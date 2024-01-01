@@ -80,12 +80,13 @@ oc get clusterrolebinding -ojson | jq '.items | [.[]? | select((.roleRef.name=="
 # ServiceAccount vmware-vsphere-csi-driver-controller-sa openshift-cluster-csi-drivers
 # ServiceAccount vmware-vsphere-csi-driver-node-sa openshift-cluster-csi-drivers
 ```
-## CICD ##
 
-A jenkins CICD helps to do the bash quality code scan.
 ### jq commands ###
 
 1. change json to table
     ``` sh
     cat "..." | jq -r '(map(keys) | add | unique) as $cols | map(. as $row | $cols | map($row[.])) as $rows |  $col,$rows[] | @csv '
     ```
+## CICD ##
+
+A jenkins CICD helps to do the bash quality code scan.
